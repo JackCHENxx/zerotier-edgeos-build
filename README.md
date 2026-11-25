@@ -50,7 +50,7 @@ ra  = 0000000120203ea8   # inside std::condition_variable::wait
 
 The cause is the cross toolchain, not ZeroTier One: a 20-line `std::thread` + `std::condition_variable` program built statically with Ubuntu 22.04's GCC 10.3 / glibc 2.35 MIPS compiler crashes identically, while the dynamic build runs. `-O0`, `-fPIC`, `-no-pie`, `-fno-optimize-sibling-calls` and `--no-relax` all fail.
 
-So this repo builds **dynamically** and bundles the runtime, starting the binary through its own loader:
+So this repo builds **dynamically** and bundles the runtime, starting the binary through its own loader (paths relative to `/config/zerotier-one`):
 
 ```sh
 lib64/ld.so.1 --library-path lib zerotier-one -p9993 -d /config/zerotier-one/home
