@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "ZeroTier tag to build (empty = upstream latest release)"
+        description: "ZeroTier One tag to build (empty = upstream latest release)"
         required: false
         default: ""
       release:
@@ -50,7 +50,7 @@ jobs:
           else
             echo "has_release=false" >> "$GITHUB_OUTPUT"
           fi
-          echo "Building ZeroTier $TAG"
+          echo "Building ZeroTier One $TAG"
 
   build:
     name: Build EdgeOS deb (MIPS64)
@@ -133,7 +133,7 @@ jobs:
         run: |
           set -euo pipefail
           cat > notes.md <<EOF
-          Self-contained EdgeOS package for ER-4 / ER-6P / ER-12 (MIPS64), built from upstream ZeroTier \`$TAG\`.
+          Self-contained EdgeOS package for ER-4 / ER-6P / ER-12 (MIPS64), built from upstream ZeroTier One \`$TAG\`.
 
           Dynamic build with a bundled glibc 2.35 runtime — static builds from this toolchain crash at runtime on MIPS (\`epc=0\` inside \`std::condition_variable::wait\`), so they are not shipped here.
 
@@ -162,6 +162,6 @@ jobs:
           EOF
           ls -l
           gh release create "zt-$TAG" --repo "$GITHUB_REPOSITORY" \
-            --title "ZeroTier $TAG for EdgeOS (MIPS64, ER-4)" \
+            --title "ZeroTier One $TAG for EdgeOS (MIPS64, ER-4)" \
             --notes-file notes.md \
             zerotier-one-edgeos_*.deb zerotier-one-edgeos_*.deb.sha256
