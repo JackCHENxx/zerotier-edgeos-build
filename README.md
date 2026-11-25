@@ -4,8 +4,11 @@ Cross-built, statically linked ZeroTier One binaries for EdgeOS routers, rebuilt
 
 | Asset | Devices | Architecture |
 | --- | --- | --- |
-| `zerotier-one-<tag>-mips-be` | ER-4 / ER-6P / ER-12 (Octeon) | ELF 32-bit MSB, MIPS32 rel2, static |
+| `zerotier-one-<tag>-mips64-be` | ER-4 / ER-6P / ER-12 (Octeon) — **preferred** | ELF 64-bit MSB, MIPS64 rel2, static |
+| `zerotier-one-<tag>-mips-be` | same devices — 32-bit fallback | ELF 32-bit MSB, MIPS32 rel2, static |
 | `zerotier-one-<tag>-mips-le` | ER-X (MT7621) | ELF 32-bit LSB, MIPS32 rel2, static |
+
+ER-4 runs a **64-bit kernel with a 32-bit userland** (`uname -m` = `mips64`, `getconf LONG_BIT` = `32`), and the kernel does accept static MIPS64 (n64) executables — verified with ZeroTier's own mips64 package running on the device. The 64-bit build is preferred there: no `libatomic` relink, native 64-bit atomics, slightly better software-crypto throughput. The 32-bit `mips-be` stays as a fallback in case a firmware build rejects n64.
 
 ## Why this repo exists
 
@@ -22,7 +25,7 @@ So anyone wanting a current ZeroTier on these routers has to compile it. This re
 - Source: `zerotier/ZeroTierOne` at the upstream release tag, submodules included.
 - Toolchain: Ubuntu 22.04 `gcc-mips-linux-gnu` / `gcc-mipsel-linux-gnu` (GCC 10.3) + `libatomic1-*-cross`.
 - Flags: `ZT_UBIQUITI=1 ZT_STATIC=1`, `-DZT_NO_TYPE_PUNNING` is added by upstream's Makefile for MIPS.
-- Upstream's own link step fails on 32-bit MIPS (`__atomic_*_8` undefined), so the workflow relinks the objects manually with `-latomic -lpthread` and `-static -pie`.
+- 32-bit MIPS: upstream's link step fails (`__atomic_*_8` undefined), so the workflow relinks the objects manually with `-latomic -lpthread`. 64-bit MIPS links cleanly and needs no libatomic.
 - Every build is checked with `file` / `readelf`: ELF32 MIPS32 rel2, **no `NEEDED` entries** (fully static, so the router's glibc version does not matter).
 
 Builds run daily at 02:17 UTC, and on demand via **Actions → build → Run workflow**. A GitHub release is created only when the upstream tag has no release here yet.

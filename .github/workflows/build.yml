@@ -67,6 +67,10 @@ jobs:
             triplet: mips-linux-gnu
             atomic_pkg: libatomic1-mips-cross
             devices: "ER-4, ER-6P, ER-12 (Octeon, big-endian)"
+          - label: mips64-be
+            triplet: mips64-linux-gnuabi64
+            atomic_pkg: ""
+            devices: "ER-4, ER-6P, ER-12 (Octeon, big-endian, 64-bit userland)"
           - label: mips-le
             triplet: mipsel-linux-gnu
             atomic_pkg: libatomic1-mipsel-cross
@@ -87,24 +91,31 @@ jobs:
           submodules: recursive
           path: src
 
-      - name: Compile objects
+      - name: Build
         run: |
-          # Upstream links without -latomic on 32-bit MIPS, so the final link is
-          # expected to fail. We only need the object files from this step.
+          # 32-bit MIPS: upstream links without -latomic, so make fails at link time
+          # and we relink the objects ourselves. 64-bit MIPS links cleanly and needs
+          # no libatomic, so make produces the final binary directly.
           set +e
           make -C src -j"$(nproc)" \
             CC=${{ matrix.triplet }}-gcc CXX=${{ matrix.triplet }}-g++ \
-            ZT_UBIQUITI=1 ZT_STATIC=1 zerotier-one 2>&1 | tee build.log | tail -25
-          echo "make exit code: ${PIPESTATUS[0]} (link failure expected)"
+            ZT_UBIQUITI=1 ZT_STATIC=1 zerotier-one 2>&1 | tee build.log | tail -20
+          echo "make exit code: ${PIPESTATUS[0]}"
           test "$(find src -name '*.o' | wc -l)" -gt 30
 
-      - name: Relink with libatomic
+      - name: Collect binary
         run: |
           set -e
-          ${{ matrix.triplet }}-g++ -O3 -static -pie -Wl,-z,relro,-z,now -Wl,-z,noexecstack \
-            -o "zerotier-one-${{ matrix.label }}" \
-            $(find src/node src/osdep src/service src/ext/miniupnpc src/ext/libnatpmp src/ext/http-parser -name '*.o') \
-            src/one.o -latomic -lpthread
+          if [ -x src/zerotier-one ]; then
+            cp src/zerotier-one "zerotier-one-${{ matrix.label }}"
+            echo "make produced the final binary directly"
+          else
+            echo "relinking objects with -latomic"
+            ${{ matrix.triplet }}-g++ -O3 -static -pie -Wl,-z,relro,-z,now -Wl,-z,noexecstack \
+              -o "zerotier-one-${{ matrix.label }}" \
+              $(find src/node src/osdep src/service src/ext/miniupnpc src/ext/libnatpmp src/ext/http-parser -name '*.o') \
+              src/one.o -latomic -lpthread
+          fi
 
       - name: Verify binary
         run: |
@@ -162,7 +173,8 @@ jobs:
             echo
             echo "| Asset | Devices | Architecture |"
             echo "| --- | --- | --- |"
-            echo "| \`zerotier-one-$TAG-mips-be\` | ER-4, ER-6P, ER-12 | ELF32 MSB, MIPS32 rel2, static |"
+            echo "| \`zerotier-one-$TAG-mips64-be\` | ER-4, ER-6P, ER-12 | ELF64 MSB, MIPS64 rel2, static |"
+            echo "| \`zerotier-one-$TAG-mips-be\` | same devices, 32-bit fallback | ELF32 MSB, MIPS32 rel2, static |"
             echo "| \`zerotier-one-$TAG-mips-le\` | ER-X | ELF32 LSB, MIPS32 rel2, static |"
             echo
             echo "Built from upstream tag \`$TAG\` (commit \`$SHA\`) with \`ZT_UBIQUITI=1 ZT_STATIC=1\`,"
