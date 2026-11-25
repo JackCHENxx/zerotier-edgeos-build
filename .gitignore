@@ -1,0 +1,4 @@
+dist/
+*.o
+build.log
+zerotier-one-*

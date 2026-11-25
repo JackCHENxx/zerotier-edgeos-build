@@ -1,0 +1,9 @@
+These binaries are unmodified builds of ZeroTier One.
+
+Upstream source: https://github.com/zerotier/ZeroTierOne
+License: Business Source License 1.1 (see LICENSE.txt in the upstream repository)
+
+Build parameters used here:
+  ZT_UBIQUITI=1 ZT_STATIC=1
+  cross toolchain: gcc-mips-linux-gnu / gcc-mipsel-linux-gnu (GCC 10.3, Ubuntu 22.04)
+  payload link: -static -pie -Wl,-z,relro,-z,now -Wl,-z,noexecstack -latomic -lpthread

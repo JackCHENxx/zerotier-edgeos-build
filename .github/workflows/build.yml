@@ -1,0 +1,179 @@
+name: build
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "ZeroTier tag to build (empty = upstream latest release)"
+        required: false
+        default: ""
+      release:
+        description: "Create a GitHub release for this tag"
+        type: boolean
+        default: true
+  schedule:
+    - cron: "17 2 * * 1" # Mondays 02:17 UTC — check upstream for a new release
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/build.yml"
+      - "README.md"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  resolve:
+    name: Resolve upstream tag
+    runs-on: ubuntu-22.04
+    outputs:
+      tag: ${{ steps.r.outputs.tag }}
+      commit: ${{ steps.r.outputs.commit }}
+      has_release: ${{ steps.r.outputs.has_release }}
+    steps:
+      - name: Resolve tag
+        id: r
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          TAG="${{ inputs.tag }}"
+          if [ -z "$TAG" ]; then
+            TAG=$(gh api repos/zerotier/ZeroTierOne/releases/latest --jq .tag_name)
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          SHA=$(gh api "repos/zerotier/ZeroTierOne/commits/$TAG" --jq .sha)
+          echo "commit=$SHA" >> "$GITHUB_OUTPUT"
+          if gh release view "zt-$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "has_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_release=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Building ZeroTier $TAG ($SHA)"
+
+  build:
+    name: Build ${{ matrix.label }}
+    needs: resolve
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: mips-be
+            triplet: mips-linux-gnu
+            atomic_pkg: libatomic1-mips-cross
+            devices: "ER-4, ER-6P, ER-12 (Octeon, big-endian)"
+          - label: mips-le
+            triplet: mipsel-linux-gnu
+            atomic_pkg: libatomic1-mipsel-cross
+            devices: "ER-X (MT7621, little-endian)"
+    steps:
+      - name: Install cross toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            gcc-${{ matrix.triplet }} g++-${{ matrix.triplet }} ${{ matrix.atomic_pkg }}
+          ${{ matrix.triplet }}-g++ --version | head -1
+
+      - name: Checkout upstream source
+        uses: actions/checkout@v4
+        with:
+          repository: zerotier/ZeroTierOne
+          ref: ${{ needs.resolve.outputs.tag }}
+          submodules: recursive
+          path: src
+
+      - name: Compile objects
+        run: |
+          # Upstream links without -latomic on 32-bit MIPS, so the final link is
+          # expected to fail. We only need the object files from this step.
+          set +e
+          make -C src -j"$(nproc)" \
+            CC=${{ matrix.triplet }}-gcc CXX=${{ matrix.triplet }}-g++ \
+            ZT_UBIQUITI=1 ZT_STATIC=1 zerotier-one 2>&1 | tee build.log | tail -25
+          echo "make exit code: ${PIPESTATUS[0]} (link failure expected)"
+          test "$(find src -name '*.o' | wc -l)" -gt 30
+
+      - name: Relink with libatomic
+        run: |
+          set -e
+          ${{ matrix.triplet }}-g++ -O3 -static -pie -Wl,-z,relro,-z,now -Wl,-z,noexecstack \
+            -o "zerotier-one-${{ matrix.label }}" \
+            $(find src/node src/osdep src/service src/ext/miniupnpc src/ext/libnatpmp src/ext/http-parser -name '*.o') \
+            src/one.o -latomic -lpthread
+
+      - name: Verify binary
+        run: |
+          set -e
+          BIN="zerotier-one-${{ matrix.label }}"
+          file "$BIN"
+          readelf -h "$BIN" | grep -E 'Class|Data|Type|Machine'
+          if readelf -d "$BIN" | grep -q NEEDED; then
+            echo "unexpected dynamic dependencies"; readelf -d "$BIN"; exit 1
+          fi
+          echo "statically linked: OK"
+
+      - name: Name and hash
+        id: pack
+        run: |
+          set -e
+          TAG="${{ needs.resolve.outputs.tag }}"
+          ASSET="zerotier-one-${TAG}-${{ matrix.label }}"
+          mv "zerotier-one-${{ matrix.label }}" "$ASSET"
+          sha256sum "$ASSET" > "$ASSET.sha256"
+          md5sum "$ASSET" > "$ASSET.md5"
+          cat "$ASSET.sha256"
+          echo "asset=$ASSET" >> "$GITHUB_OUTPUT"
+          mkdir -p dist && cp "$ASSET" "$ASSET".sha256 "$ASSET".md5 dist/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.pack.outputs.asset }}
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: [resolve, build]
+    if: needs.resolve.outputs.has_release == 'false' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.release))
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.resolve.outputs.tag }}
+          SHA: ${{ needs.resolve.outputs.commit }}
+        run: |
+          set -e
+          ls -l dist
+          {
+            echo "Static ZeroTier One **$TAG** builds for 32-bit MIPS EdgeOS routers."
+            echo
+            echo "| Asset | Devices | Architecture |"
+            echo "| --- | --- | --- |"
+            echo "| \`zerotier-one-$TAG-mips-be\` | ER-4, ER-6P, ER-12 | ELF32 MSB, MIPS32 rel2, static |"
+            echo "| \`zerotier-one-$TAG-mips-le\` | ER-X | ELF32 LSB, MIPS32 rel2, static |"
+            echo
+            echo "Built from upstream tag \`$TAG\` (commit \`$SHA\`) with \`ZT_UBIQUITI=1 ZT_STATIC=1\`,"
+            echo "GCC 10.3 cross toolchain, manual relink with \`-latomic\`."
+            echo
+            echo "Verify with the attached \`.sha256\` / \`.md5\` before deploying."
+            echo "These binaries are not smoke-tested on hardware by CI — test one router first."
+            echo
+            echo "Deployment: see the repository README."
+          } > notes.md
+          gh release create "zt-$TAG" --repo "$GITHUB_REPOSITORY" \
+            --title "ZeroTier $TAG for EdgeOS (32-bit MIPS)" \
+            --notes-file notes.md \
+            dist/*
