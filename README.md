@@ -15,20 +15,31 @@ sudo curl -fLO https://github.com/JackCHENxx/zerotier-edgeos-build/releases/late
 sudo dpkg -i zerotier-one-edgeos_1.16.2_all.deb
 ```
 
-The package installs to `/config/zerotier-one` (binary + bundled glibc runtime), writes an auto-start hook to `/config/scripts/post-config.d/zerotier-one-start.sh`, and starts the daemon. It does not touch `/usr/sbin` or the router's system libc.
+The package installs to `/config/zerotier-one` (binary + bundled glibc runtime), writes an auto-start hook to `/config/scripts/post-config.d/zerotier-one-start.sh`, and starts the daemon. It installs **official entry points** in `/usr/sbin` — `zerotier-one`, `zerotier-cli`, `zerotier-idtool` — that wrap the bundled loader, so upstream commands work unchanged. It does not touch the router's system libc.
 
 Verify:
 
 ```sh
 sudo netstat -lnup 2>/dev/null | grep 9993
+sudo zerotier-cli info
 ```
 
-Join a network (the virtual interface only appears after joining):
+## Commands (upstream syntax)
 
 ```sh
-sudo /config/zerotier-one/lib64/ld.so.1 --library-path /config/zerotier-one/lib \
-  /config/zerotier-one/zerotier-one -q -p9993 -T$(cat /config/zerotier-one/home/authtoken.secret) join <network-id>
+sudo zerotier-cli info
+sudo zerotier-cli listnetworks
+sudo zerotier-cli join <network-id>
+sudo zerotier-cli leave <network-id>
+sudo zerotier-cli listpeers
+sudo zerotier-cli get <network-id> <key>
+sudo zerotier-idtool getmoonlist
+sudo /etc/init.d/zerotier-one start|stop|restart|status
 ```
+
+Port and API token are read from `/config/zerotier-one/home` (`zerotier-one.port`, `authtoken.secret`); passing `-p<port>` or `-T<token>` yourself overrides them. `sudo zerotier-one -V` prints the version as usual.
+
+There is no systemd on EdgeOS, so `systemctl`/`service` are unavailable (`/etc/init.d/zerotier-one` is provided instead), and the data directory defaults to `/config/zerotier-one/home` rather than `/var/lib/zerotier-one`.
 
 ## Lifecycle
 

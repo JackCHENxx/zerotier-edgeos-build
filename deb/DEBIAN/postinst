@@ -3,18 +3,33 @@ set -e
 
 ZT_ROOT=/config/zerotier-one
 chmod 755 "$ZT_ROOT/zerotier-one" "$ZT_ROOT/lib64/ld.so.1" 2>/dev/null || true
+chmod 755 "$ZT_ROOT/bin/"* 2>/dev/null || true
+
+# Official entry points in /usr/sbin, so plain `zerotier-cli info` works.
+link_sbin() {
+    for t in zerotier-one zerotier-cli zerotier-idtool; do
+        ln -sf "$ZT_ROOT/bin/$t" "/usr/sbin/$t" 2>/dev/null || true
+    done
+}
+link_sbin
 
 mkdir -p /config/scripts/post-config.d
-# Drop any hook left behind by the old short-name layout so only one starter runs.
+# Drop the hook left by the old short-name layout.
 rm -f /config/scripts/post-config.d/zerotier-start.sh
 
 cat > /config/scripts/post-config.d/zerotier-one-start.sh <<'EOS'
 #!/bin/sh
-ZT_LD=/config/zerotier-one/lib64/ld.so.1
-ZT_LIB=/config/zerotier-one/lib
-ZT_BIN=/config/zerotier-one/zerotier-one
-ZT_HOME=/config/zerotier-one/home
+ZT_ROOT=/config/zerotier-one
+ZT_LD=$ZT_ROOT/lib64/ld.so.1
+ZT_LIB=$ZT_ROOT/lib
+ZT_BIN=$ZT_ROOT/zerotier-one
+ZT_HOME=$ZT_ROOT/home
 ZT_PORT=9993
+
+# /usr may be reset by a firmware upgrade: recreate the official entry points.
+for t in zerotier-one zerotier-cli zerotier-idtool; do
+    ln -sf "$ZT_ROOT/bin/$t" "/usr/sbin/$t" 2>/dev/null || true
+done
 
 [ -x "$ZT_BIN" ] || exit 0
 [ -x "$ZT_LD" ] || exit 0

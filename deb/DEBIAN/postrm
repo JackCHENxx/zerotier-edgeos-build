@@ -2,6 +2,9 @@
 case "$1" in
  purge)
     pkill -f "zerotier-one -p9993" >/dev/null 2>&1 || true
+    for t in zerotier-one zerotier-cli zerotier-idtool; do
+        [ "$(readlink "/usr/sbin/$t" 2>/dev/null)" = "/config/zerotier-one/bin/$t" ] && rm -f "/usr/sbin/$t"
+    done
     rm -rf /config/zerotier-one
     # leftovers from the old short-name layout
     rm -rf /config/zt

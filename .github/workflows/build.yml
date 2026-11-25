@@ -143,16 +143,19 @@ jobs:
           sudo dpkg -i zerotier-one-edgeos_${TAG}_all.deb
           \`\`\`
 
-          Installs to \`/config/zerotier-one\`, adds an auto-start hook at \`/config/scripts/post-config.d/zerotier-one-start.sh\`, and starts the daemon.
+          Installs to \`/config/zerotier-one\`, adds an auto-start hook at \`/config/scripts/post-config.d/zerotier-one-start.sh\`, and starts the daemon. Official entry points \`zerotier-one\`, \`zerotier-cli\` and \`zerotier-idtool\` are installed in \`/usr/sbin\`, so upstream commands work unchanged.
 
-          ### Join a network
+          ### Commands
 
           \`\`\`
-          sudo /config/zerotier-one/lib64/ld.so.1 --library-path /config/zerotier-one/lib \\
-            /config/zerotier-one/zerotier-one -q -p9993 -T\\$(cat /config/zerotier-one/home/authtoken.secret) join <network-id>
+          sudo zerotier-cli info
+          sudo zerotier-cli join <network-id>
+          sudo zerotier-cli listnetworks
+          sudo zerotier-cli leave <network-id>
+          sudo /etc/init.d/zerotier-one start|stop|restart|status
           \`\`\`
 
-          The \`zt\` interface only appears after joining. Verify with \`netstat -lnup | grep 9993\`.
+          Port and API token are read from \`/config/zerotier-one/home\`; \`-p<port>\` / \`-T<token>\` override them. No systemd on EdgeOS, so \`systemctl\`/\`service\` are unavailable — use the init script above. The virtual interface only appears after joining.
 
           ### Lifecycle
 
