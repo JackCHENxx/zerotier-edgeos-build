@@ -1,0 +1,30 @@
+#!/bin/sh
+set -e
+
+chmod 755 /config/zt/zt-dyn /config/zt/ztlib/lib64/ld.so.1 2>/dev/null || true
+mkdir -p /config/scripts/post-config.d
+
+cat > /config/scripts/post-config.d/zerotier-start.sh <<'EOS'
+#!/bin/sh
+ZT_LD=/config/zt/ztlib/lib64/ld.so.1
+ZT_LIB=/config/zt/ztlib/lib
+ZT_BIN=/config/zt/zt-dyn
+ZT_HOME=/config/zt/home
+ZT_PORT=9993
+
+[ -x "$ZT_BIN" ] || exit 0
+[ -x "$ZT_LD" ] || exit 0
+if ps ax 2>/dev/null | grep -v grep | grep -q "zt-dyn -p$ZT_PORT"; then
+    exit 0
+fi
+nohup "$ZT_LD" --library-path "$ZT_LIB" "$ZT_BIN" -p$ZT_PORT -d "$ZT_HOME" >/dev/null 2>&1 &
+exit 0
+EOS
+
+chmod 755 /config/scripts/post-config.d/zerotier-start.sh
+
+if ! ps ax 2>/dev/null | grep -v grep | grep -q "zt-dyn -p9993"; then
+    nohup /config/zt/ztlib/lib64/ld.so.1 --library-path /config/zt/ztlib/lib /config/zt/zt-dyn -p9993 -d /config/zt/home >/dev/null 2>&1 &
+fi
+
+exit 0

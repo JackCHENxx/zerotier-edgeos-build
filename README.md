@@ -26,6 +26,25 @@ Cross-built, statically linked ZeroTier One binaries for EdgeOS routers, rebuilt
 
 ER-4 runs a **64-bit kernel with a 32-bit userland** (`uname -m` = `mips64`, `getconf LONG_BIT` = `32`), so n64 executables load. The 64-bit build needs no `libatomic` relink and has native 64-bit atomics; the 32-bit `mips-be` was kept as a fallback.
 
+## Packaging for EdgeOS
+
+`deb/` holds the packaging template that produces `zerotier-one-edgeos_1.16.2_all.deb` — the self-contained package published in this release (dynamic binary + bundled glibc runtime + auto-start hook, installed under `/config/zt`). Build it from a directory containing `zt-dyn` and `ztlib/`:
+
+```sh
+chmod +x deb/build-deb.sh
+./deb/build-deb.sh ./dist zerotier-one-edgeos_1.16.2_all.deb
+```
+
+Install / remove on the router:
+
+```sh
+sudo dpkg -i zerotier-one-edgeos_1.16.2_all.deb   # installs + starts + adds auto-start hook
+sudo dpkg -r zerotier-one-edgeos                  # keeps identity in /config/zt/home
+sudo dpkg -P zerotier-one-edgeos                  # purge, removes /config/zt
+```
+
+To survive firmware upgrades, copy the deb to `/config/data/firstboot/install-packages/`; EdgeOS replays packages from there after an upgrade.
+
 ## Why this repo exists
 
 EdgeOS 3.x runs a **32-bit userland** even on 64-bit MIPS hardware, and upstream stopped shipping 32-bit MIPS packages:

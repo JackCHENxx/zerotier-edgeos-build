@@ -1,0 +1,4 @@
+#!/bin/sh
+pkill -f "zt-dyn -p9993" >/dev/null 2>&1 || true
+rm -f /config/scripts/post-config.d/zerotier-start.sh
+exit 0
