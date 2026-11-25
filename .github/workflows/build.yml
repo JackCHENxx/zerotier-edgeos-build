@@ -87,15 +87,15 @@ jobs:
           SYS=/usr/mips64-linux-gnuabi64
           test -d "$SYS" || SYS=$(dirname "$(dirname "$(mips64-linux-gnuabi64-gcc -print-file-name=libc.so.6)")")
           echo "sysroot: $SYS"
-          mkdir -p dist/ztlib/lib dist/ztlib/lib64
-          cp src/zerotier-one dist/zt-dyn
-          cp "$(find "$SYS" -name ld.so.1 | head -1)" dist/ztlib/lib64/
+          mkdir -p dist/lib dist/lib64
+          cp src/zerotier-one dist/zerotier-one
+          cp "$(find "$SYS" -name ld.so.1 | head -1)" dist/lib64/
           for f in libc.so.6 libm.so.6 libstdc++.so.6 libgcc_s.so.1; do
-            cp "$(find "$SYS" -name "$f" | head -1)" dist/ztlib/lib/
+            cp "$(find "$SYS" -name "$f" | head -1)" dist/lib/
           done
-          ls -l dist/ztlib/lib64 dist/ztlib/lib
-          mips64-linux-gnuabi64-strip --strip-unneeded dist/ztlib/lib/*.so.* dist/ztlib/lib64/ld.so.1
-          chmod 755 dist/zt-dyn dist/ztlib/lib64/ld.so.1
+          ls -l dist/lib64 dist/lib
+          mips64-linux-gnuabi64-strip --strip-unneeded dist/lib/*.so.* dist/lib64/ld.so.1
+          chmod 755 dist/zerotier-one dist/lib64/ld.so.1
           find dist -type f -exec file {} \;
 
       - name: Build EdgeOS deb
@@ -143,21 +143,21 @@ jobs:
           sudo dpkg -i zerotier-one-edgeos_${TAG}_all.deb
           \`\`\`
 
-          Installs to \`/config/zt\`, adds an auto-start hook at \`/config/scripts/post-config.d/zerotier-start.sh\`, and starts the daemon.
+          Installs to \`/config/zerotier-one\`, adds an auto-start hook at \`/config/scripts/post-config.d/zerotier-one-start.sh\`, and starts the daemon.
 
           ### Join a network
 
           \`\`\`
-          sudo /config/zt/ztlib/lib64/ld.so.1 --library-path /config/zt/ztlib/lib \\
-            /config/zt/zt-dyn -q -p9993 -T\\$(cat /config/zt/home/authtoken.secret) join <network-id>
+          sudo /config/zerotier-one/lib64/ld.so.1 --library-path /config/zerotier-one/lib \\
+            /config/zerotier-one/zerotier-one -q -p9993 -T\\$(cat /config/zerotier-one/home/authtoken.secret) join <network-id>
           \`\`\`
 
           The \`zt\` interface only appears after joining. Verify with \`netstat -lnup | grep 9993\`.
 
           ### Lifecycle
 
-          - \`sudo dpkg -r zerotier-one-edgeos\` — stop, remove auto-start hook, keep identity in \`/config/zt/home\`
-          - \`sudo dpkg -P zerotier-one-edgeos\` — purge, removes \`/config/zt\`
+          - \`sudo dpkg -r zerotier-one-edgeos\` — stop, remove auto-start hook, keep identity in \`/config/zerotier-one/home\`
+          - \`sudo dpkg -P zerotier-one-edgeos\` — purge, removes \`/config/zerotier-one\` (and any leftover \`/config/zt\`)
           - copy the deb to \`/config/data/firstboot/install-packages/\` so EdgeOS reinstalls it after a firmware upgrade
           EOF
           ls -l

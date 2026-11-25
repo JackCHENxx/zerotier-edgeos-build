@@ -7,11 +7,12 @@ Maintainer: JackCHENxx <jack_chen@live.com>
 Installed-Size: 7900
 Depends: 
 Description: ZeroTier One 1.16.2 for Ubiquiti EdgeOS (self-contained dynamic build)
- Bundles its own glibc 2.35 runtime and loader under /config/zt, so it does
- not depend on the router's older system libc. Started via the bundled loader
- (ztlib/lib64/ld.so.1 --library-path ztlib/lib). Installs an auto-start hook at
- /config/scripts/post-config.d/zerotier-start.sh.
+ Bundles its own glibc 2.35 runtime and loader under /config/zerotier-one, so
+ it does not depend on the router's older system libc. Started via the bundled
+ loader (lib64/ld.so.1 --library-path lib). Installs an auto-start hook at
+ /config/scripts/post-config.d/zerotier-one-start.sh.
  .
  Why dynamic: static C++ builds from the GCC 10.3 / glibc 2.35 MIPS cross
  toolchain crash at runtime (epc=0 inside std::condition_variable::wait).
- Network ID and identity live in /config/zt/home and survive upgrades.
+ Network ID and identity live in /config/zerotier-one/home and survive
+ firmware upgrades.

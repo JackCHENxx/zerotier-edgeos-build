@@ -1,8 +1,11 @@
 #!/bin/sh
 case "$1" in
  purge)
-    pkill -f "zt-dyn -p9993" >/dev/null 2>&1 || true
+    pkill -f "zerotier-one -p9993" >/dev/null 2>&1 || true
+    rm -rf /config/zerotier-one
+    # leftovers from the old short-name layout
     rm -rf /config/zt
+    rm -f /config/scripts/post-config.d/zerotier-start.sh
     ;;
 esac
 exit 0

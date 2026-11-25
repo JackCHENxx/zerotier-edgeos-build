@@ -1,30 +1,35 @@
 #!/bin/sh
 set -e
 
-chmod 755 /config/zt/zt-dyn /config/zt/ztlib/lib64/ld.so.1 2>/dev/null || true
-mkdir -p /config/scripts/post-config.d
+ZT_ROOT=/config/zerotier-one
+chmod 755 "$ZT_ROOT/zerotier-one" "$ZT_ROOT/lib64/ld.so.1" 2>/dev/null || true
 
-cat > /config/scripts/post-config.d/zerotier-start.sh <<'EOS'
+mkdir -p /config/scripts/post-config.d
+# Drop any hook left behind by the old short-name layout so only one starter runs.
+rm -f /config/scripts/post-config.d/zerotier-start.sh
+
+cat > /config/scripts/post-config.d/zerotier-one-start.sh <<'EOS'
 #!/bin/sh
-ZT_LD=/config/zt/ztlib/lib64/ld.so.1
-ZT_LIB=/config/zt/ztlib/lib
-ZT_BIN=/config/zt/zt-dyn
-ZT_HOME=/config/zt/home
+ZT_LD=/config/zerotier-one/lib64/ld.so.1
+ZT_LIB=/config/zerotier-one/lib
+ZT_BIN=/config/zerotier-one/zerotier-one
+ZT_HOME=/config/zerotier-one/home
 ZT_PORT=9993
 
 [ -x "$ZT_BIN" ] || exit 0
 [ -x "$ZT_LD" ] || exit 0
-if ps ax 2>/dev/null | grep -v grep | grep -q "zt-dyn -p$ZT_PORT"; then
+if ps ax 2>/dev/null | grep -v grep | grep -q "zerotier-one -p$ZT_PORT"; then
     exit 0
 fi
 nohup "$ZT_LD" --library-path "$ZT_LIB" "$ZT_BIN" -p$ZT_PORT -d "$ZT_HOME" >/dev/null 2>&1 &
 exit 0
 EOS
 
-chmod 755 /config/scripts/post-config.d/zerotier-start.sh
+chmod 755 /config/scripts/post-config.d/zerotier-one-start.sh
 
-if ! ps ax 2>/dev/null | grep -v grep | grep -q "zt-dyn -p9993"; then
-    nohup /config/zt/ztlib/lib64/ld.so.1 --library-path /config/zt/ztlib/lib /config/zt/zt-dyn -p9993 -d /config/zt/home >/dev/null 2>&1 &
+if ! ps ax 2>/dev/null | grep -v grep | grep -q "zerotier-one -p9993"; then
+    nohup /config/zerotier-one/lib64/ld.so.1 --library-path /config/zerotier-one/lib \
+        /config/zerotier-one/zerotier-one -p9993 -d /config/zerotier-one/home >/dev/null 2>&1 &
 fi
 
 exit 0

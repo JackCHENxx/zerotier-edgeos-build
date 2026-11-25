@@ -15,7 +15,7 @@ sudo curl -fLO https://github.com/JackCHENxx/zerotier-edgeos-build/releases/late
 sudo dpkg -i zerotier-one-edgeos_1.16.2_all.deb
 ```
 
-The package installs to `/config/zt` (binary + bundled glibc runtime), writes an auto-start hook to `/config/scripts/post-config.d/zerotier-start.sh`, and starts the daemon. It does not touch `/usr/sbin` or the router's system libc.
+The package installs to `/config/zerotier-one` (binary + bundled glibc runtime), writes an auto-start hook to `/config/scripts/post-config.d/zerotier-one-start.sh`, and starts the daemon. It does not touch `/usr/sbin` or the router's system libc.
 
 Verify:
 
@@ -26,14 +26,14 @@ sudo netstat -lnup 2>/dev/null | grep 9993
 Join a network (the virtual interface only appears after joining):
 
 ```sh
-sudo /config/zt/ztlib/lib64/ld.so.1 --library-path /config/zt/ztlib/lib \
-  /config/zt/zt-dyn -q -p9993 -T$(cat /config/zt/home/authtoken.secret) join <network-id>
+sudo /config/zerotier-one/lib64/ld.so.1 --library-path /config/zerotier-one/lib \
+  /config/zerotier-one/zerotier-one -q -p9993 -T$(cat /config/zerotier-one/home/authtoken.secret) join <network-id>
 ```
 
 ## Lifecycle
 
-- `sudo dpkg -r zerotier-one-edgeos` — stop, remove auto-start hook, **keep** identity in `/config/zt/home`
-- `sudo dpkg -P zerotier-one-edgeos` — purge, removes `/config/zt` entirely
+- `sudo dpkg -r zerotier-one-edgeos` — stop, remove auto-start hook, **keep** identity in `/config/zerotier-one/home`
+- `sudo dpkg -P zerotier-one-edgeos` — purge, removes `/config/zerotier-one` entirely
 - Firmware upgrade: copy the deb to `/config/data/firstboot/install-packages/`; EdgeOS replays it after upgrading
 
 ## Why dynamic, not static
@@ -53,7 +53,7 @@ The cause is the cross toolchain, not ZeroTier One: a 20-line `std::thread` + `s
 So this repo builds **dynamically** and bundles the runtime, starting the binary through its own loader:
 
 ```sh
-ztlib/lib64/ld.so.1 --library-path ztlib/lib zt-dyn -p9993 -d /config/zt/home
+lib64/ld.so.1 --library-path lib zerotier-one -p9993 -d /config/zerotier-one/home
 ```
 
 Verified on a Shanghai ER-4: `ZeroTier One version 1.16.2 build 0 (platform 1 arch 6)`, `join` → `200 join OK`, a `zt`-prefixed tap interface, address assigned by the network, UDP 9993 listening on all interfaces.
@@ -71,7 +71,7 @@ make -j"$(nproc)" ZT_UBIQUITI=1 \
   LDFLAGS="-no-pie -Wl,-z,noexecstack" zerotier-one
 ```
 
-Then follow `deb/build-deb.sh` for the layout (`ztlib/lib64/ld.so.1` + `ztlib/lib/{libc,libm,libstdc++,libgcc_s}.so*`).
+Then follow `deb/build-deb.sh` for the layout (`lib64/ld.so.1` + `lib/{libc,libm,libstdc++,libgcc_s}.so*`).
 
 ## Limitations
 
