@@ -8,7 +8,12 @@ chmod 755 "$ZT_ROOT/bin/"* 2>/dev/null || true
 # Official entry points in /usr/sbin, so plain `zerotier-cli info` works.
 link_sbin() {
     for t in zerotier-one zerotier-cli zerotier-idtool; do
-        ln -sf "$ZT_ROOT/bin/$t" "/usr/sbin/$t" 2>/dev/null || true
+        dst="/usr/sbin/$t"
+        # keep whatever was there before (e.g. an official 1.8.4 binary)
+        if [ -e "$dst" ] && [ ! -L "$dst" ] && [ ! -e "$dst.edgeos-orig" ]; then
+            mv "$dst" "$dst.edgeos-orig" 2>/dev/null || true
+        fi
+        ln -sf "$ZT_ROOT/bin/$t" "$dst" 2>/dev/null || true
     done
 }
 link_sbin

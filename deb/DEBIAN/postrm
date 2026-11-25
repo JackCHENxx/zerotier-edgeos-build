@@ -4,6 +4,7 @@ case "$1" in
     pkill -f "zerotier-one -p9993" >/dev/null 2>&1 || true
     for t in zerotier-one zerotier-cli zerotier-idtool; do
         [ "$(readlink "/usr/sbin/$t" 2>/dev/null)" = "/config/zerotier-one/bin/$t" ] && rm -f "/usr/sbin/$t"
+        [ -e "/usr/sbin/$t.edgeos-orig" ] && mv -f "/usr/sbin/$t.edgeos-orig" "/usr/sbin/$t"
     done
     rm -rf /config/zerotier-one
     # leftovers from the old short-name layout
