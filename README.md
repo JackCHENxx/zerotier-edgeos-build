@@ -2,6 +2,8 @@
 
 Self-contained `.deb` packages for EdgeRouter 4 / 6P / 12, rebuilt from upstream ZeroTier One releases by GitHub Actions and verified on real hardware.
 
+> Scope: this repository packages ZeroTier One for MIPS EdgeOS. It is **not** deployed on the routers these builds were made for — the packages are kept ready for the cases that need a layer-2 overlay (SADP/ONVIF discovery, no-port-forward NAT traversal).
+
 | Asset | Target |
 | --- | --- |
 | `zerotier-one-edgeos_<tag>_all.deb` | ER-4 / ER-6P / ER-12 (Octeon, MIPS64 n64) |
