@@ -76,4 +76,4 @@ Notes:
 
 ## License
 
-ZeroTier One is distributed under the **Business Source License 1.1** (see `LICENSE.txt` upstream). The assets here are unmodified builds of that source; the same license applies. Source: <https://github.com/zerotier/ZeroTierOne>.
+Since ZeroTier 1.16.0 the core (`node/`, `include/`) and service (`service/`, `osdep/`) code is under the **Mozilla Public License 2.0**; the network controller moved to a separate commercial source-available license and is **not** included in default builds (and not in these builds — they use `ZT_UBIQUITI=1` without `ZT_NONFREE=1`). The assets here are unmodified builds of that source, so MPL 2.0 applies. Source: <https://github.com/zerotier/ZeroTierOne>.

@@ -1,7 +1,8 @@
 These binaries are unmodified builds of ZeroTier One.
 
 Upstream source: https://github.com/zerotier/ZeroTierOne
-License: Business Source License 1.1 (see LICENSE.txt in the upstream repository)
+License: Mozilla Public License 2.0 for core + service code (ZeroTier 1.16.x).
+The network controller is under a separate commercial license and is not part of these builds.
 
 Build parameters used here:
   ZT_UBIQUITI=1 ZT_STATIC=1
