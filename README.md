@@ -25,7 +25,7 @@ So anyone wanting a current ZeroTier on these routers has to compile it. This re
 - Upstream's own link step fails on 32-bit MIPS (`__atomic_*_8` undefined), so the workflow relinks the objects manually with `-latomic -lpthread` and `-static -pie`.
 - Every build is checked with `file` / `readelf`: ELF32 MIPS32 rel2, **no `NEEDED` entries** (fully static, so the router's glibc version does not matter).
 
-Builds run on every Monday 02:17 UTC, and on demand via **Actions → build → Run workflow**. A GitHub release is created only when the upstream tag has no release here yet.
+Builds run daily at 02:17 UTC, and on demand via **Actions → build → Run workflow**. A GitHub release is created only when the upstream tag has no release here yet.
 
 ## Install on the router
 

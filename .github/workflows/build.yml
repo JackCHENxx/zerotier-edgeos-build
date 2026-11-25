@@ -12,7 +12,7 @@ on:
         type: boolean
         default: true
   schedule:
-    - cron: "17 2 * * 1" # Mondays 02:17 UTC — check upstream for a new release
+    - cron: "17 2 * * *" # daily 02:17 UTC — check upstream for a new release
   push:
     branches: [main]
     paths:
