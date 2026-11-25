@@ -84,12 +84,16 @@ jobs:
       - name: Bundle runtime
         run: |
           set -euo pipefail
+          SYS=/usr/mips64-linux-gnuabi64
+          test -d "$SYS" || SYS=$(dirname "$(dirname "$(mips64-linux-gnuabi64-gcc -print-file-name=libc.so.6)")")
+          echo "sysroot: $SYS"
           mkdir -p dist/ztlib/lib dist/ztlib/lib64
           cp src/zerotier-one dist/zt-dyn
-          cp /usr/mips64-linux-gnuabi64/lib64/ld.so.1 dist/ztlib/lib64/
+          cp "$(find "$SYS" -name ld.so.1 | head -1)" dist/ztlib/lib64/
           for f in libc.so.6 libm.so.6 libstdc++.so.6 libgcc_s.so.1; do
-            cp "/usr/mips64-linux-gnuabi64/lib/$f" dist/ztlib/lib/
+            cp "$(find "$SYS" -name "$f" | head -1)" dist/ztlib/lib/
           done
+          ls -l dist/ztlib/lib64 dist/ztlib/lib
           mips64-linux-gnuabi64-strip --strip-unneeded dist/ztlib/lib/*.so.* dist/ztlib/lib64/ld.so.1
           chmod 755 dist/zt-dyn dist/ztlib/lib64/ld.so.1
           find dist -type f -exec file {} \;
