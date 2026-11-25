@@ -8,7 +8,23 @@ Cross-built, statically linked ZeroTier One binaries for EdgeOS routers, rebuilt
 | `zerotier-one-<tag>-mips-be` | same devices — 32-bit fallback | ELF 32-bit MSB, MIPS32 rel2, static |
 | `zerotier-one-<tag>-mips-le` | ER-X (MT7621) | ELF 32-bit LSB, MIPS32 rel2, static |
 
-ER-4 runs a **64-bit kernel with a 32-bit userland** (`uname -m` = `mips64`, `getconf LONG_BIT` = `32`), and the kernel does accept static MIPS64 (n64) executables — verified with ZeroTier's own mips64 package running on the device. The 64-bit build is preferred there: no `libatomic` relink, native 64-bit atomics, slightly better software-crypto throughput. The 32-bit `mips-be` stays as a fallback in case a firmware build rejects n64.
+> ## ⚠️ These static binaries do not run on MIPS (tested 2026-11-25)
+>
+> All three architectures build, link statically, report the correct version with `-V` — and then **segfault on a real ER-4** right after `Starting V6 Control Plane`.
+>
+> Kernel log: `epc = 0000000000000000`, `ra` inside `std::condition_variable::wait`. A 20-line `std::thread` + `std::condition_variable` program crashes the same way when built **statically** with the Ubuntu 22.04 cross toolchain (GCC 10.3 / glibc 2.35), while the **dynamic** build runs fine. `-O0`, `-fPIC`, `-no-pie`, `-fno-optimize-sibling-calls` and `--no-relax` all fail.
+>
+> Conclusion: **static C++ binaries from this toolchain are unusable on MIPS** — a toolchain defect, not a ZeroTier bug. Until this repo ships dynamic variants, treat the assets here as "build artifacts only", not deployable binaries.
+>
+> Working approach (verified on ER-4): build dynamically (`-no-pie`, no `-static`), ship `ld.so.1`, `libc.so.6`, `libm.so.6`, `libstdc++.so.6`, `libgcc_s.so.1` alongside, and start it through the bundled loader:
+>
+> ```sh
+> ztlib/lib64/ld.so.1 --library-path ztlib/lib zt-dyn -p9993 -d /config/zt/home
+> ```
+>
+> On the router this yielded `arch 6`, `join` → `200 join OK`, a `zt`-prefixed tap interface, address assigned by the network, UDP 9993 listening.
+
+ER-4 runs a **64-bit kernel with a 32-bit userland** (`uname -m` = `mips64`, `getconf LONG_BIT` = `32`), so n64 executables load. The 64-bit build needs no `libatomic` relink and has native 64-bit atomics; the 32-bit `mips-be` was kept as a fallback.
 
 ## Why this repo exists
 
@@ -70,7 +86,8 @@ Notes:
 
 ## Status and caveats
 
-- CI proves the binaries **compile, link statically and match the target architecture**. It does **not** boot them on a router. Test one device (ideally the one you can physically reach) before rolling out.
+- **Static builds are not deployable** (see the warning at the top): they compile and link correctly but crash on MIPS at `std::condition_variable` use. The root cause is the cross toolchain's static C++ runtime, reproducible with a minimal program.
+- The **dynamic build + bundled glibc runtime** was verified on a Shanghai ER-4: `ZeroTier One version 1.16.2 build 0 (platform 1 arch 6)`, joined a network (`200 join OK`), created a `zt`-prefixed tap interface, address assigned by the network, UDP 9993 listening on all interfaces.
 - ZeroTier is single-threaded with software crypto; neither ER-4 (Octeon, no AES-NI) nor ER-X (MT7621) is fast. A newer version does not fix throughput.
 - If you already run Tailscale for remote access and WireGuard for site-to-site traffic, ZeroTier is a third, optional path — upgrading it is a housekeeping task, not a connectivity fix.
 
